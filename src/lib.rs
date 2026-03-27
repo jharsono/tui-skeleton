@@ -18,8 +18,7 @@
 //! # Example
 //!
 //! ```rust
-//! use ratatui_core::style::Color;
-//! use tui_skeleton::{SkeletonBlock, AnimationMode};
+//! use tui_skeleton::{SkeletonBlock, AnimationMode, Color};
 //!
 //! let elapsed_ms = 1000u64;
 //! let widget = SkeletonBlock::new(elapsed_ms)
@@ -40,7 +39,7 @@
 //!
 //! This keeps CPU usage low while delivering smooth animations during loading.
 
-pub mod animation;
+pub(crate) mod animation;
 mod bar_chart;
 mod block;
 mod hbar_chart;
@@ -59,6 +58,11 @@ pub use line_chart::SkeletonLineChart;
 pub use list::SkeletonList;
 pub use table::SkeletonTable;
 pub use text::SkeletonText;
+
+// Re-export types consumers need so they never depend on ratatui-core/ratatui-widgets directly.
+pub use ratatui_core::layout::Constraint;
+pub use ratatui_core::style::Color;
+pub use ratatui_widgets::block::Block;
 
 use std::time::Duration;
 

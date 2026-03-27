@@ -37,7 +37,7 @@ const PLASMA_FREQ_B: f32 = 0.29;
 ///
 /// Returns a value in `[0.0, 1.0]` representing brightness progression
 /// from `base` toward `highlight`.
-pub fn cell_intensity(mode: AnimationMode, elapsed_ms: u64, col: u16, width: u16) -> f32 {
+pub(crate) fn cell_intensity(mode: AnimationMode, elapsed_ms: u64, col: u16, width: u16) -> f32 {
     match mode {
         AnimationMode::Sweep => sweep_intensity(elapsed_ms, col, width),
         AnimationMode::Breathe => breathe_intensity(elapsed_ms),
@@ -86,7 +86,7 @@ fn plasma_intensity(elapsed_ms: u64, col: u16) -> f32 {
 ///
 /// For [`AnimationMode::Plasma`], the highlight is extrapolated 2× past
 /// the base→highlight distance so peaks are clearly visible.
-pub fn interpolate_color(
+pub(crate) fn interpolate_color(
     base: Color,
     highlight: Color,
     mode: AnimationMode,
