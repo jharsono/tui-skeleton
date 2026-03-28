@@ -151,6 +151,10 @@ impl Widget for SkeletonKvTable<'_> {
     }
 }
 
+#[cfg(feature = "pantry")]
+#[path = "kv_table.ingredient.rs"]
+pub mod ingredient;
+
 #[cfg(test)]
 mod tests {
     use super::*;

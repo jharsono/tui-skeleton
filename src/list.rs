@@ -113,6 +113,10 @@ impl Widget for SkeletonList<'_> {
     }
 }
 
+#[cfg(feature = "pantry")]
+#[path = "list.ingredient.rs"]
+pub mod ingredient;
+
 #[cfg(test)]
 mod tests {
     use super::*;

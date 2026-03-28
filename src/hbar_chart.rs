@@ -132,6 +132,10 @@ impl Widget for SkeletonHBarChart<'_> {
     }
 }
 
+#[cfg(feature = "pantry")]
+#[path = "hbar_chart.ingredient.rs"]
+pub mod ingredient;
+
 #[cfg(test)]
 mod tests {
     use super::*;

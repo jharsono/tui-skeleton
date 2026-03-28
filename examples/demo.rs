@@ -10,7 +10,8 @@ use ratatui::{
 };
 use tui_skeleton::{
     AnimationMode, SkeletonBarChart, SkeletonBlock, SkeletonHBarChart, SkeletonKvTable,
-    SkeletonLineChart, SkeletonList, SkeletonTable, SkeletonText, TICK_ANIMATED,
+    SkeletonLineChart, SkeletonList, SkeletonStreamingText, SkeletonTable, SkeletonText,
+    TICK_ANIMATED,
 };
 
 const BASE: Color = Color::Rgb(30, 22, 58);
@@ -100,27 +101,23 @@ fn draw(frame: &mut Frame, app: &App) {
         header,
     );
 
-    let [col_a, col_b, col_c, col_d] = Layout::horizontal([
-        Constraint::Percentage(25),
-        Constraint::Percentage(25),
-        Constraint::Percentage(25),
-        Constraint::Percentage(25),
-    ])
-    .areas(body);
+    // 3×3 grid for all 9 widgets.
+    let thirds = [
+        Constraint::Percentage(33),
+        Constraint::Percentage(34),
+        Constraint::Percentage(33),
+    ];
 
-    let [top_a, bottom_a] =
-        Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)]).areas(col_a);
+    let [row_1, row_2, row_3] = Layout::vertical(thirds).areas(body);
+    let [a1, b1, c1] = Layout::horizontal(thirds).areas(row_1);
+    let [a2, b2, c2] = Layout::horizontal(thirds).areas(row_2);
+    let [a3, b3, c3] = Layout::horizontal(thirds).areas(row_3);
 
-    let [top_b, bottom_b] =
-        Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)]).areas(col_b);
-
-    let [top_c, bottom_c] =
-        Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)]).areas(col_c);
-
-    let [top_d, bottom_d] =
-        Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)]).areas(col_d);
-
-    // Row 1
+    let table_cols = [
+        Constraint::Percentage(30),
+        Constraint::Percentage(40),
+        Constraint::Percentage(30),
+    ];
 
     frame.render_widget(
         SkeletonBlock::new(ms)
@@ -128,14 +125,8 @@ fn draw(frame: &mut Frame, app: &App) {
             .base(BASE)
             .highlight(HIGHLIGHT)
             .block(titled_block("Block")),
-        top_a,
+        a1,
     );
-
-    let table_cols = [
-        Constraint::Percentage(30),
-        Constraint::Percentage(40),
-        Constraint::Percentage(30),
-    ];
 
     frame.render_widget(
         SkeletonTable::new(ms)
@@ -145,7 +136,7 @@ fn draw(frame: &mut Frame, app: &App) {
             .columns(&table_cols)
             .rows(8)
             .block(titled_block("Table")),
-        top_b,
+        b1,
     );
 
     frame.render_widget(
@@ -156,20 +147,8 @@ fn draw(frame: &mut Frame, app: &App) {
             .bars(6)
             .bar_width(2)
             .block(titled_block("Bar Chart")),
-        top_c,
+        c1,
     );
-
-    frame.render_widget(
-        SkeletonLineChart::new(ms)
-            .mode(mode)
-            .base(BASE)
-            .highlight(HIGHLIGHT)
-            .lines(2)
-            .block(titled_block("Line Chart")),
-        top_d,
-    );
-
-    // Row 2
 
     frame.render_widget(
         SkeletonList::new(ms)
@@ -178,7 +157,7 @@ fn draw(frame: &mut Frame, app: &App) {
             .highlight(HIGHLIGHT)
             .items(6)
             .block(titled_block("List")),
-        bottom_a,
+        a2,
     );
 
     frame.render_widget(
@@ -187,7 +166,7 @@ fn draw(frame: &mut Frame, app: &App) {
             .base(BASE)
             .highlight(HIGHLIGHT)
             .block(titled_block("Text")),
-        bottom_b,
+        b2,
     );
 
     frame.render_widget(
@@ -198,7 +177,17 @@ fn draw(frame: &mut Frame, app: &App) {
             .bars(6)
             .bar_height(1)
             .block(titled_block("H-Bar Chart")),
-        bottom_c,
+        c2,
+    );
+
+    frame.render_widget(
+        SkeletonLineChart::new(ms)
+            .mode(mode)
+            .base(BASE)
+            .highlight(HIGHLIGHT)
+            .lines(2)
+            .block(titled_block("Line Chart")),
+        a3,
     );
 
     frame.render_widget(
@@ -209,7 +198,17 @@ fn draw(frame: &mut Frame, app: &App) {
             .pairs(6)
             .key_width(8)
             .block(titled_block("KV Table")),
-        bottom_d,
+        b3,
+    );
+
+    frame.render_widget(
+        SkeletonStreamingText::new(ms)
+            .mode(mode)
+            .base(BASE)
+            .highlight(HIGHLIGHT)
+            .repeat(true)
+            .block(titled_block("Streaming Text")),
+        c3,
     );
 }
 

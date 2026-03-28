@@ -15,6 +15,7 @@ Placeholder widgets that pulse, sweep, or shimmer while data loads. All widgets 
 | `SkeletonBarChart` | Vertical bars of varying height |
 | `SkeletonHBarChart` | Horizontal bars of varying length |
 | `SkeletonKvTable` | Key-value pairs (properties/detail panel) |
+| `SkeletonStreamingText` | Typewriter-style chat text filling over time |
 | `SkeletonLineChart` | Braille line chart with overlapping wave traces |
 
 ## Installation
@@ -147,15 +148,29 @@ Shape-specific:
 | `SkeletonKvTable` | `pairs(u16)` | `5` | Number of key-value pairs |
 | `SkeletonKvTable` | `key_width(u16)` | `12` | Fixed width of the key column |
 | `SkeletonKvTable` | `value_widths(&[f32])` | built-in pattern | Per-pair value width fractions (cycles) |
+| `SkeletonStreamingText` | `lines(u16)` | `5` | Total lines to fill |
+| `SkeletonStreamingText` | `duration_ms(u64)` | `3000` | Milliseconds to complete the fill |
+| `SkeletonStreamingText` | `repeat(bool)` | `false` | Loop the fill cycle |
+| `SkeletonStreamingText` | `line_widths(&[f32])` | built-in pattern | Per-line width fractions (cycles, capped at 95%) |
 | `SkeletonLineChart` | `lines(u16)` | `2` | Number of overlapping wave traces |
 
 ## Examples
+
+### Interactive demo
 
 ```sh
 cargo run --example demo
 ```
 
-Interactive demo with all eight widget types in a 4×2 grid. Press `m` to cycle animation modes, `q` to quit.
+All widget types in a 4×2 grid. Press `m` to cycle animation modes, `q` to quit.
+
+### Widget pantry
+
+Browse every widget, animation mode, and realistic use-case pane with [tui-pantry](https://crates.io/crates/tui-pantry):
+
+```sh
+cargo run --example widget_preview --features pantry
+```
 
 ## License
 

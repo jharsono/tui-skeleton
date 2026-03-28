@@ -10,6 +10,7 @@
 //! - [`SkeletonTable`] — Rows with column separators and zebra striping
 //! - [`SkeletonList`] — Short spaced items with ragged edges (menu/sidebar)
 //! - [`SkeletonText`] — Paragraph simulation with varying line widths
+//! - [`SkeletonStreamingText`] — Typewriter-style chat text filling over time
 //! - [`SkeletonBarChart`] — Vertical bars of varying height
 //! - [`SkeletonHBarChart`] — Horizontal bars of varying length
 //! - [`SkeletonKvTable`] — Key-value pairs (properties/detail panel)
@@ -40,14 +41,18 @@
 //! This keeps CPU usage low while delivering smooth animations during loading.
 
 pub(crate) mod animation;
-mod bar_chart;
-mod block;
-mod hbar_chart;
-mod kv_table;
-mod line_chart;
-mod list;
-mod table;
-mod text;
+pub mod bar_chart;
+pub mod block;
+pub mod hbar_chart;
+pub mod kv_table;
+pub mod line_chart;
+pub mod list;
+pub mod table;
+pub mod streaming_text;
+pub mod text;
+
+#[cfg(feature = "pantry")]
+pub mod use_cases;
 
 pub use animation::AnimationMode;
 pub use bar_chart::SkeletonBarChart;
@@ -56,6 +61,7 @@ pub use hbar_chart::SkeletonHBarChart;
 pub use kv_table::SkeletonKvTable;
 pub use line_chart::SkeletonLineChart;
 pub use list::SkeletonList;
+pub use streaming_text::SkeletonStreamingText;
 pub use table::SkeletonTable;
 pub use text::SkeletonText;
 
