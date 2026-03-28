@@ -206,6 +206,10 @@ fn is_separator(offsets: &[u16], col: u16) -> bool {
     offsets.contains(&col)
 }
 
+#[cfg(feature = "pantry")]
+#[path = "table.ingredient.rs"]
+pub mod ingredient;
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -10,9 +10,18 @@ repository = "https://github.com/jharsono/tui-skeleton"
 readme = "README.md"
 rust-version = "1.85"
 
+[features]
+pantry = ["dep:tui-pantry", "dep:ratatui"]
+
 [dependencies]
+ratatui = { version = "0.30", optional = true }
 ratatui-core = "0.1.0"
 ratatui-widgets = "0.3.0"
+tui-pantry = { version = "0.3.0", optional = true }
+
+[[example]]
+name = "widget_preview"
+required-features = ["pantry"]
 
 [dev-dependencies]
 color-eyre = "0.6"

@@ -133,6 +133,10 @@ impl Widget for SkeletonBarChart<'_> {
     }
 }
 
+#[cfg(feature = "pantry")]
+#[path = "bar_chart.ingredient.rs"]
+pub mod ingredient;
+
 #[cfg(test)]
 mod tests {
     use super::*;

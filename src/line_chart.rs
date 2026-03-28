@@ -286,6 +286,10 @@ fn plot_wave(
     }
 }
 
+#[cfg(feature = "pantry")]
+#[path = "line_chart.ingredient.rs"]
+pub mod ingredient;
+
 #[cfg(test)]
 mod tests {
     use super::*;

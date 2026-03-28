@@ -1,0 +1,18 @@
+[config]
+theme = "dark"
+
+[ingredients]
+source = "tui_skeleton"
+
+modules = [
+    "block",
+    "table",
+    "list",
+    "text",
+    "bar_chart",
+    "hbar_chart",
+    "kv_table",
+    "line_chart",
+    "streaming_text",
+    "use_cases",
+]

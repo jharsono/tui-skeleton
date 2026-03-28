@@ -114,6 +114,10 @@ pub(crate) fn render_skeleton_cells(
     }
 }
 
+#[cfg(feature = "pantry")]
+#[path = "block.ingredient.rs"]
+pub mod ingredient;
+
 #[cfg(test)]
 mod tests {
     use super::*;

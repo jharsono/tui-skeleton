@@ -95,6 +95,10 @@ impl Widget for SkeletonText<'_> {
     }
 }
 
+#[cfg(feature = "pantry")]
+#[path = "text.ingredient.rs"]
+pub mod ingredient;
+
 #[cfg(test)]
 mod tests {
     use super::*;
