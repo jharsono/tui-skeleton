@@ -17,6 +17,7 @@ const DEFAULT_LINE_WIDTHS: [f32; 5] = [1.0, 1.0, 0.80, 1.0, 0.60];
 pub struct SkeletonText<'a> {
     elapsed_ms: u64,
     mode: AnimationMode,
+    braille: bool,
     base: Color,
     highlight: Color,
     line_widths: &'a [f32],
@@ -28,6 +29,7 @@ impl<'a> SkeletonText<'a> {
         Self {
             elapsed_ms,
             mode: AnimationMode::default(),
+            braille: false,
             base: defaults::BASE,
             highlight: defaults::HIGHLIGHT,
             line_widths: &DEFAULT_LINE_WIDTHS,
@@ -37,6 +39,11 @@ impl<'a> SkeletonText<'a> {
 
     pub fn mode(mut self, mode: AnimationMode) -> Self {
         self.mode = mode;
+        self
+    }
+
+    pub fn braille(mut self, braille: bool) -> Self {
+        self.braille = braille;
         self
     }
 
@@ -83,6 +90,7 @@ impl Widget for SkeletonText<'_> {
             inner,
             buf,
             self.mode,
+            self.braille,
             self.elapsed_ms,
             self.base,
             self.highlight,

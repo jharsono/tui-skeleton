@@ -4,7 +4,7 @@ use ratatui_core::{
     buffer::Buffer,
     layout::{Constraint, Rect},
 };
-use tui_pantry::{layout::render_centered, Ingredient, PropInfo};
+use tui_pantry::{Ingredient, PropInfo, layout::render_centered};
 
 use super::SkeletonList;
 use crate::AnimationMode;
@@ -21,8 +21,7 @@ const PROPS: &[PropInfo] = &[
     PropInfo {
         name: "mode",
         ty: "AnimationMode",
-        description:
-            "Breathe (uniform pulse), Sweep (traveling highlight), Plasma (dual sine waves)",
+        description: "Breathe (uniform pulse), Sweep (traveling highlight), Plasma (dual sine waves), Noise (TV noise)",
     },
     PropInfo {
         name: "items",
@@ -39,20 +38,25 @@ const PROPS: &[PropInfo] = &[
 pub fn ingredients() -> Vec<Box<dyn Ingredient>> {
     VARIANTS
         .iter()
-        .map(|&(mode, name)| -> Box<dyn Ingredient> {
+        .map(|&(mode, braille, name)| -> Box<dyn Ingredient> {
             Box::new(ListVariant {
                 epoch: Instant::now(),
                 mode,
+                braille,
                 variant: name,
             })
         })
         .collect()
 }
 
-const VARIANTS: &[(AnimationMode, &str)] = &[
-    (AnimationMode::Breathe, "Breathe (default)"),
-    (AnimationMode::Sweep, "Sweep"),
-    (AnimationMode::Plasma, "Plasma"),
+const VARIANTS: &[(AnimationMode, bool, &str)] = &[
+    (AnimationMode::Breathe, false, "Breathe (default)"),
+    (AnimationMode::Sweep, false, "Sweep"),
+    (AnimationMode::Plasma, false, "Plasma"),
+    (AnimationMode::Noise, false, "Noise"),
+    (AnimationMode::Breathe, true, "Braille Breathe"),
+    (AnimationMode::Sweep, true, "Braille Sweep"),
+    (AnimationMode::Plasma, true, "Braille Plasma"),
 ];
 
 fn elapsed_ms(epoch: Instant) -> u64 {
@@ -62,6 +66,7 @@ fn elapsed_ms(epoch: Instant) -> u64 {
 struct ListVariant {
     epoch: Instant,
     mode: AnimationMode,
+    braille: bool,
     variant: &'static str,
 }
 
@@ -89,6 +94,7 @@ impl Ingredient for ListVariant {
         render_centered(
             SkeletonList::new(elapsed_ms(self.epoch))
                 .mode(self.mode)
+                .braille(self.braille)
                 .items(5),
             None,
             Some(Constraint::Length(9)),

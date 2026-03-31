@@ -5,7 +5,7 @@ use ratatui_core::{
     widgets::Widget,
 };
 
-use crate::animation::{cell_intensity, interpolate_color, AnimationMode};
+use crate::animation::{AnimationMode, cell_intensity, interpolate_color, is_uniform};
 use crate::defaults;
 
 /// Deterministic value width fractions cycling across rows.
@@ -21,6 +21,7 @@ const DEFAULT_VALUE_WIDTHS: [f32; 5] = [0.60, 0.40, 0.75, 0.35, 0.55];
 pub struct SkeletonKvTable<'a> {
     elapsed_ms: u64,
     mode: AnimationMode,
+    braille: bool,
     base: Color,
     highlight: Color,
     pairs: u16,
@@ -34,6 +35,7 @@ impl<'a> SkeletonKvTable<'a> {
         Self {
             elapsed_ms,
             mode: AnimationMode::default(),
+            braille: false,
             base: defaults::BASE,
             highlight: defaults::HIGHLIGHT,
             pairs: 5,
@@ -45,6 +47,11 @@ impl<'a> SkeletonKvTable<'a> {
 
     pub fn mode(mut self, mode: AnimationMode) -> Self {
         self.mode = mode;
+        self
+    }
+
+    pub fn braille(mut self, braille: bool) -> Self {
+        self.braille = braille;
         self
     }
 
@@ -106,12 +113,12 @@ impl Widget for SkeletonKvTable<'_> {
         let stride = 2u16; // content row + gap row
         let pair_count = self.pairs.min((inner.height + 1) / stride);
 
-        // Breathe is uniform — hoist.
-        let breathe_t = matches!(self.mode, AnimationMode::Breathe)
+        let uniform_t = is_uniform(self.mode)
             .then(|| cell_intensity(self.mode, self.elapsed_ms, 0, inner.width));
 
         for i in 0..pair_count {
             let y = inner.y + i * stride;
+            let row = y - inner.y;
 
             if y >= inner.bottom() {
                 break;
@@ -120,12 +127,21 @@ impl Widget for SkeletonKvTable<'_> {
             // Key cells.
             for col in 0..self.key_width {
                 let x = inner.x + col;
-                let t = breathe_t.unwrap_or_else(|| {
+                let t = uniform_t.unwrap_or_else(|| {
                     cell_intensity(self.mode, self.elapsed_ms, col, inner.width)
                 });
                 let fg = interpolate_color(self.base, self.highlight, self.mode, t);
+                let glyph = crate::animation::cell_glyph(
+                    self.braille,
+                    self.mode,
+                    self.elapsed_ms,
+                    row,
+                    col,
+                );
 
-                buf[(x, y)].set_char('█').set_style(Style::default().fg(fg));
+                buf[(x, y)]
+                    .set_char(glyph)
+                    .set_style(Style::default().fg(fg));
             }
 
             // Separator.
@@ -140,12 +156,21 @@ impl Widget for SkeletonKvTable<'_> {
             for col in 0..val_width.min(value_space) {
                 let abs_col = value_start + col;
                 let x = inner.x + abs_col;
-                let t = breathe_t.unwrap_or_else(|| {
+                let t = uniform_t.unwrap_or_else(|| {
                     cell_intensity(self.mode, self.elapsed_ms, abs_col, inner.width)
                 });
                 let fg = interpolate_color(self.base, self.highlight, self.mode, t);
+                let glyph = crate::animation::cell_glyph(
+                    self.braille,
+                    self.mode,
+                    self.elapsed_ms,
+                    row,
+                    abs_col,
+                );
 
-                buf[(x, y)].set_char('█').set_style(Style::default().fg(fg));
+                buf[(x, y)]
+                    .set_char(glyph)
+                    .set_style(Style::default().fg(fg));
             }
         }
     }

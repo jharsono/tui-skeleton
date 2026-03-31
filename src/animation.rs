@@ -11,6 +11,9 @@ pub enum AnimationMode {
     /// Two sine waves at different frequencies drift in opposite directions,
     /// creating organic shifting brightness patterns.
     Plasma,
+    /// Random braille dot patterns that change every frame — TV noise.
+    /// Implies braille fill regardless of the `braille` flag.
+    Noise,
 }
 
 // ── Timing constants ────────────────────────────────────────────────
@@ -31,6 +34,51 @@ const PLASMA_AMPLITUDE: f32 = 0.6;
 const PLASMA_FREQ_A: f32 = 0.18;
 const PLASMA_FREQ_B: f32 = 0.29;
 
+/// Noise mode resting intensity — dim but visible.
+const NOISE_INTENSITY: f32 = 0.3;
+
+// ── Fill ────────────────────────────────────────────────────────────
+
+/// Braille blank (U+2800). Adding 0..255 yields all dot patterns.
+const BRAILLE_BASE: u32 = 0x2800;
+
+const SOLID_FILL: char = '█';
+const BRAILLE_FILL: char = '⣿'; // U+28FF — full braille block
+
+/// Return the fill character for a cell.
+///
+/// - [`AnimationMode::Noise`]: random braille glyph per cell per frame
+/// - `braille: true`: solid braille block (`⣿`)
+/// - Otherwise: solid block (`█`)
+pub(crate) fn cell_glyph(
+    braille: bool,
+    mode: AnimationMode,
+    elapsed_ms: u64,
+    row: u16,
+    col: u16,
+) -> char {
+    if mode == AnimationMode::Noise {
+        let h = cell_hash(elapsed_ms, row, col);
+        return char::from_u32(BRAILLE_BASE + h as u32).unwrap_or(BRAILLE_FILL);
+    }
+
+    if braille { BRAILLE_FILL } else { SOLID_FILL }
+}
+
+/// Simple hash — enough entropy to look random, not cryptographic.
+fn cell_hash(elapsed_ms: u64, row: u16, col: u16) -> u8 {
+    let mut h = elapsed_ms
+        .wrapping_mul(2654435761)
+        .wrapping_add(row as u64 * 131)
+        .wrapping_add(col as u64 * 65537);
+
+    h ^= h >> 13;
+    h = h.wrapping_mul(0x5bd1e995);
+    h ^= h >> 15;
+
+    h as u8
+}
+
 // ── Intensity ───────────────────────────────────────────────────────
 
 /// Compute animation intensity for a single cell.
@@ -42,7 +90,13 @@ pub(crate) fn cell_intensity(mode: AnimationMode, elapsed_ms: u64, col: u16, wid
         AnimationMode::Sweep => sweep_intensity(elapsed_ms, col, width),
         AnimationMode::Breathe => breathe_intensity(elapsed_ms),
         AnimationMode::Plasma => plasma_intensity(elapsed_ms, col),
+        AnimationMode::Noise => NOISE_INTENSITY,
     }
+}
+
+/// Returns true when the mode uses uniform (non-positional) intensity.
+pub(crate) fn is_uniform(mode: AnimationMode) -> bool {
+    matches!(mode, AnimationMode::Breathe | AnimationMode::Noise)
 }
 
 fn sweep_intensity(elapsed_ms: u64, col: u16, width: u16) -> f32 {
@@ -154,6 +208,42 @@ mod tests {
             let t = plasma_intensity(1234, col);
             assert!((0.0..=1.0).contains(&t), "plasma out of bounds: {t}");
         }
+    }
+
+    #[test]
+    fn noise_is_constant_intensity() {
+        let a = cell_intensity(AnimationMode::Noise, 0, 0, 80);
+        let b = cell_intensity(AnimationMode::Noise, 5000, 40, 80);
+        assert_eq!(a, b);
+        assert_eq!(a, NOISE_INTENSITY);
+    }
+
+    #[test]
+    fn cell_glyph_solid_default() {
+        assert_eq!(cell_glyph(false, AnimationMode::Breathe, 1000, 0, 0), '█');
+        assert_eq!(cell_glyph(false, AnimationMode::Sweep, 1000, 0, 0), '█');
+        assert_eq!(cell_glyph(false, AnimationMode::Plasma, 1000, 0, 0), '█');
+    }
+
+    #[test]
+    fn cell_glyph_braille_fill() {
+        assert_eq!(cell_glyph(true, AnimationMode::Breathe, 1000, 0, 0), '⣿');
+        assert_eq!(cell_glyph(true, AnimationMode::Sweep, 1000, 0, 0), '⣿');
+        assert_eq!(cell_glyph(true, AnimationMode::Plasma, 1000, 0, 0), '⣿');
+    }
+
+    #[test]
+    fn cell_glyph_noise_is_random_braille() {
+        let ch = cell_glyph(false, AnimationMode::Noise, 1000, 0, 0);
+        assert!((0x2800..=0x28FF).contains(&(ch as u32)));
+    }
+
+    #[test]
+    fn is_uniform_modes() {
+        assert!(is_uniform(AnimationMode::Breathe));
+        assert!(is_uniform(AnimationMode::Noise));
+        assert!(!is_uniform(AnimationMode::Sweep));
+        assert!(!is_uniform(AnimationMode::Plasma));
     }
 
     #[test]

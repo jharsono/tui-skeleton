@@ -5,7 +5,7 @@ use ratatui_core::{
     widgets::Widget,
 };
 
-use crate::animation::{cell_intensity, interpolate_color, AnimationMode};
+use crate::animation::{AnimationMode, cell_intensity, interpolate_color, is_uniform};
 use crate::defaults;
 
 /// Deterministic width fractions cycling across bars.
@@ -21,6 +21,7 @@ const DEFAULT_WIDTHS: [f32; 7] = [0.85, 0.60, 0.95, 0.45, 0.75, 0.55, 0.70];
 pub struct SkeletonHBarChart<'a> {
     elapsed_ms: u64,
     mode: AnimationMode,
+    braille: bool,
     base: Color,
     highlight: Color,
     bars: u16,
@@ -34,6 +35,7 @@ impl<'a> SkeletonHBarChart<'a> {
         Self {
             elapsed_ms,
             mode: AnimationMode::default(),
+            braille: false,
             base: defaults::BASE,
             highlight: defaults::HIGHLIGHT,
             bars: 5,
@@ -45,6 +47,11 @@ impl<'a> SkeletonHBarChart<'a> {
 
     pub fn mode(mut self, mode: AnimationMode) -> Self {
         self.mode = mode;
+        self
+    }
+
+    pub fn braille(mut self, braille: bool) -> Self {
+        self.braille = braille;
         self
     }
 
@@ -101,8 +108,7 @@ impl Widget for SkeletonHBarChart<'_> {
         let stride = self.bar_height + 1; // bar + 1-row gap
         let bar_count = self.bars.min((inner.height + 1) / stride);
 
-        // Breathe is uniform — hoist.
-        let breathe_t = matches!(self.mode, AnimationMode::Breathe)
+        let uniform_t = is_uniform(self.mode)
             .then(|| cell_intensity(self.mode, self.elapsed_ms, 0, inner.width));
 
         for i in 0..bar_count {
@@ -117,15 +123,26 @@ impl Widget for SkeletonHBarChart<'_> {
                     break;
                 }
 
+                let row = y - inner.y;
+
                 for col in 0..bar_width.min(inner.width) {
                     let x = inner.x + col;
 
-                    let t = breathe_t.unwrap_or_else(|| {
+                    let t = uniform_t.unwrap_or_else(|| {
                         cell_intensity(self.mode, self.elapsed_ms, col, inner.width)
                     });
                     let fg = interpolate_color(self.base, self.highlight, self.mode, t);
+                    let glyph = crate::animation::cell_glyph(
+                        self.braille,
+                        self.mode,
+                        self.elapsed_ms,
+                        row,
+                        col,
+                    );
 
-                    buf[(x, y)].set_char('█').set_style(Style::default().fg(fg));
+                    buf[(x, y)]
+                        .set_char(glyph)
+                        .set_style(Style::default().fg(fg));
                 }
             }
         }

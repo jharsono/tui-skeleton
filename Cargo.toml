@@ -1,6 +1,6 @@
 [package]
 name = "tui-skeleton"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 description = "Animated skeleton loading widgets for Ratatui"
 license = "MIT OR Apache-2.0"
@@ -9,6 +9,7 @@ categories = ["command-line-interface"]
 repository = "https://github.com/jharsono/tui-skeleton"
 readme = "README.md"
 rust-version = "1.85"
+exclude = ["screenshots/"]
 
 [features]
 pantry = ["dep:tui-pantry", "dep:ratatui"]

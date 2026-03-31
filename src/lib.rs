@@ -1,18 +1,24 @@
 //! Animated skeleton loading widgets for [Ratatui](https://ratatui.rs).
 //!
-//! Provides placeholder widgets that pulse, sweep, or shimmer while data loads.
+//! Placeholder widgets that pulse, sweep, or shimmer while data loads.
 //! All widgets are stateless — pass `elapsed_ms` from your event loop and the
 //! animation state is computed purely from the timestamp.
 //!
+//! Two orthogonal axes control appearance:
+//!
+//! - **Animation mode** ([`AnimationMode`]) — Breathe, Sweep, Plasma, or Noise
+//! - **Fill variant** (`.braille(bool)`) — solid `█` or braille `⣿`
+//!
 //! # Widgets
 //!
-//! - [`SkeletonBlock`] — Solid filled rectangle (atomic unit)
-//! - [`SkeletonTable`] — Rows with column separators and zebra striping
+//! - [`SkeletonBlock`] — Filled rectangle (atomic unit)
+//! - [`SkeletonTable`] — Rows with column separators, ragged cell widths, zebra striping
 //! - [`SkeletonList`] — Short spaced items with ragged edges (menu/sidebar)
 //! - [`SkeletonText`] — Paragraph simulation with varying line widths
 //! - [`SkeletonStreamingText`] — Typewriter-style chat text filling over time
 //! - [`SkeletonBarChart`] — Vertical bars of varying height
 //! - [`SkeletonHBarChart`] — Horizontal bars of varying length
+//! - [`SkeletonBrailleBar`] — Braille progress bars with rounded caps and peak marker
 //! - [`SkeletonKvTable`] — Key-value pairs (properties/detail panel)
 //! - [`SkeletonLineChart`] — Braille line chart with overlapping wave traces
 //!
@@ -22,10 +28,22 @@
 //! use tui_skeleton::{SkeletonBlock, AnimationMode, Color};
 //!
 //! let elapsed_ms = 1000u64;
-//! let widget = SkeletonBlock::new(elapsed_ms)
-//!     .mode(AnimationMode::Breathe)
+//!
+//! // Solid fill with sweep animation
+//! let solid = SkeletonBlock::new(elapsed_ms)
+//!     .mode(AnimationMode::Sweep)
 //!     .base(Color::Rgb(30, 22, 58))
 //!     .highlight(Color::Rgb(49, 40, 78));
+//!
+//! // Braille fill with breathe animation
+//! let braille = SkeletonBlock::new(elapsed_ms)
+//!     .braille(true)
+//!     .base(Color::Rgb(30, 22, 58))
+//!     .highlight(Color::Rgb(49, 40, 78));
+//!
+//! // TV noise — random braille glyphs changing every frame
+//! let noise = SkeletonBlock::new(elapsed_ms)
+//!     .mode(AnimationMode::Noise);
 //! ```
 //!
 //! # Adaptive Tick Rate
@@ -43,12 +61,13 @@
 pub(crate) mod animation;
 pub mod bar_chart;
 pub mod block;
+pub mod braille_bar;
 pub mod hbar_chart;
 pub mod kv_table;
 pub mod line_chart;
 pub mod list;
-pub mod table;
 pub mod streaming_text;
+pub mod table;
 pub mod text;
 
 #[cfg(feature = "pantry")]
@@ -57,6 +76,7 @@ pub mod use_cases;
 pub use animation::AnimationMode;
 pub use bar_chart::SkeletonBarChart;
 pub use block::SkeletonBlock;
+pub use braille_bar::SkeletonBrailleBar;
 pub use hbar_chart::SkeletonHBarChart;
 pub use kv_table::SkeletonKvTable;
 pub use line_chart::SkeletonLineChart;

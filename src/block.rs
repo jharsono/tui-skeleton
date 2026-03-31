@@ -5,19 +5,21 @@ use ratatui_core::{
     widgets::Widget,
 };
 
-use crate::animation::{cell_intensity, interpolate_color, AnimationMode};
+use crate::animation::{AnimationMode, cell_glyph, cell_intensity, interpolate_color, is_uniform};
 use crate::defaults;
 
 /// Solid filled rectangle with animated brightness.
 ///
-/// The atomic skeleton unit — fills every cell with `█` at a color
-/// interpolated between `base` and `highlight` according to the
-/// chosen [`AnimationMode`].
+/// The atomic skeleton unit — fills every cell at a color interpolated
+/// between `base` and `highlight` according to the chosen
+/// [`AnimationMode`]. [`braille`](SkeletonBlock::braille) switches fill
+/// from `█` to `⣿`; [`AnimationMode::Noise`] uses random braille glyphs.
 #[must_use]
 #[derive(Debug, Clone)]
 pub struct SkeletonBlock<'a> {
     elapsed_ms: u64,
     mode: AnimationMode,
+    braille: bool,
     base: Color,
     highlight: Color,
     block: Option<ratatui_widgets::block::Block<'a>>,
@@ -28,6 +30,7 @@ impl<'a> SkeletonBlock<'a> {
         Self {
             elapsed_ms,
             mode: AnimationMode::default(),
+            braille: false,
             base: defaults::BASE,
             highlight: defaults::HIGHLIGHT,
             block: None,
@@ -36,6 +39,12 @@ impl<'a> SkeletonBlock<'a> {
 
     pub fn mode(mut self, mode: AnimationMode) -> Self {
         self.mode = mode;
+        self
+    }
+
+    /// Use random braille dot patterns instead of solid `█` fill.
+    pub fn braille(mut self, braille: bool) -> Self {
+        self.braille = braille;
         self
     }
 
@@ -73,6 +82,7 @@ impl Widget for SkeletonBlock<'_> {
             inner,
             buf,
             self.mode,
+            self.braille,
             self.elapsed_ms,
             self.base,
             self.highlight,
@@ -83,19 +93,20 @@ impl Widget for SkeletonBlock<'_> {
 
 /// Fill cells in `area` where `visible(row, col, width)` returns true.
 ///
-/// Shared by all skeleton widget shapes.
+/// Shared by all skeleton widget shapes. `braille: true` renders `⣿`.
+/// [`AnimationMode::Noise`] renders random braille glyphs.
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn render_skeleton_cells(
     area: Rect,
     buf: &mut Buffer,
     mode: AnimationMode,
+    braille: bool,
     elapsed_ms: u64,
     base: Color,
     highlight: Color,
     visible: impl Fn(u16, u16, u16) -> bool,
 ) {
-    // Breathe is uniform — hoist outside the per-cell loop.
-    let breathe_t = matches!(mode, AnimationMode::Breathe)
-        .then(|| cell_intensity(mode, elapsed_ms, 0, area.width));
+    let uniform_t = is_uniform(mode).then(|| cell_intensity(mode, elapsed_ms, 0, area.width));
 
     for row in 0..area.height {
         for col in 0..area.width {
@@ -103,12 +114,12 @@ pub(crate) fn render_skeleton_cells(
                 continue;
             }
 
-            let t = breathe_t.unwrap_or_else(|| cell_intensity(mode, elapsed_ms, col, area.width));
-
+            let t = uniform_t.unwrap_or_else(|| cell_intensity(mode, elapsed_ms, col, area.width));
             let fg = interpolate_color(base, highlight, mode, t);
+            let ch = cell_glyph(braille, mode, elapsed_ms, row, col);
 
             let cell = &mut buf[(area.x + col, area.y + row)];
-            cell.set_char('█');
+            cell.set_char(ch);
             cell.set_style(Style::default().fg(fg));
         }
     }
@@ -138,6 +149,39 @@ mod tests {
         for y in 0..3 {
             for x in 0..10 {
                 assert_eq!(buf[(x, y)].symbol(), "█");
+            }
+        }
+    }
+
+    #[test]
+    fn noise_mode_fills_random_braille() {
+        let area = Rect::new(0, 0, 10, 3);
+        let mut buf = Buffer::empty(area);
+
+        SkeletonBlock::new(1000)
+            .mode(AnimationMode::Noise)
+            .render(area, &mut buf);
+
+        for y in 0..3u16 {
+            for x in 0..10u16 {
+                let ch = buf[(x, y)].symbol().chars().next().unwrap();
+                assert!((0x2800..=0x28FF).contains(&(ch as u32)));
+            }
+        }
+    }
+
+    #[test]
+    fn braille_flag_fills_solid_braille() {
+        let area = Rect::new(0, 0, 10, 3);
+        let mut buf = Buffer::empty(area);
+
+        SkeletonBlock::new(1000)
+            .braille(true)
+            .render(area, &mut buf);
+
+        for y in 0..3u16 {
+            for x in 0..10u16 {
+                assert_eq!(buf[(x, y)].symbol(), "⣿");
             }
         }
     }

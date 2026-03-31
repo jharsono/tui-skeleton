@@ -4,57 +4,87 @@
 
 Stateless widgets driven by `elapsed_ms`. Animation state is computed purely from the timestamp — no mutable state, no tick tracking.
 
-### Animation System
+### Two Orthogonal Axes
 
-`animation.rs` (pub(crate)) — three modes sharing `cell_intensity(mode, elapsed_ms, col, width) -> f32`:
+Every widget exposes two independent dimensions:
 
-- **Breathe** (default) — uniform 5s sine pulse, hoisted outside per-cell loops
-- **Sweep** — 800ms traveling cosine highlight + 2s rest
-- **Plasma** — dual sine-wave interference, 2× contrast extrapolation
+1. **Animation mode** (`AnimationMode`) — how color changes over time
+2. **Fill variant** (`braille(bool)`) — what character fills cells
 
-`interpolate_color(base, highlight, mode, intensity)` maps intensity to RGB. `rgb_components()` handles named Color variants.
+| Mode | Color behavior | Glyph |
+|---|---|---|
+| **Breathe** (default) | 5s uniform sine pulse | `█` or `⣿` |
+| **Sweep** | 800ms traveling cosine + 2s rest | `█` or `⣿` |
+| **Plasma** | dual sine-wave interference, 2× contrast | `█` or `⣿` |
+| **Noise** | constant dim intensity | random braille per cell per frame |
+
+`braille(true)` renders `⣿` (solid braille block). `Noise` mode forces random braille regardless of the flag.
+
+7 display combinations per widget: Breathe, Sweep, Plasma, Noise, Braille Breathe, Braille Sweep, Braille Plasma.
+
+### Animation System (`animation.rs`, pub(crate))
+
+- `cell_intensity(mode, elapsed_ms, col, width) -> f32` — per-cell brightness
+- `cell_glyph(braille, mode, elapsed_ms, row, col) -> char` — fill character selection
+- `is_uniform(mode) -> bool` — true for Breathe and Noise (hoistable)
+- `interpolate_color(base, highlight, mode, intensity) -> Color` — RGB interpolation
+- `cell_hash(elapsed_ms, row, col) -> u8` — deterministic noise pattern
 
 ### Widget Shapes
 
-All 9 widgets share: `new(elapsed_ms)`, builder methods (`mode`, `base`, `highlight`, `block`), `Widget` impl. `#[must_use]` on structs only (builder methods inherit via return type).
+All widgets share: `new(elapsed_ms)`, builders (`mode`, `braille`, `base`, `highlight`, `block`), `Widget` impl. `#[must_use]` on structs.
 
-| Widget | Key builder | Rendering |
+| Widget | Shape-specific builders | Rendering |
 |---|---|---|
 | `SkeletonBlock` | — | Fills every cell via `render_skeleton_cells()` |
-| `SkeletonTable` | `columns(&[Constraint])`, `rows`, `zebra` | Column separators (`│`), zebra offset +0.15 |
-| `SkeletonList` | `items`, `widths` | 1-row items + 1-row gaps, short widths (30-55%) |
-| `SkeletonText` | `line_widths` | Paragraph simulation, default [1.0, 1.0, 0.8, 1.0, 0.6] |
-| `SkeletonStreamingText` | `lines`, `duration_ms`, `repeat`, `line_widths` | Typewriter fill L→R T→B, capped at 95% width |
-| `SkeletonBarChart` | `bars`, `bar_width`, `heights` | Vertical bars from bottom, 1-cell gaps |
-| `SkeletonHBarChart` | `bars`, `bar_height`, `widths` | Horizontal bars from left, 1-row gaps |
-| `SkeletonKvTable` | `pairs`, `key_width`, `value_widths` | Fixed key + dim `│` + variable value |
-| `SkeletonLineChart` | `lines`, `filled` | Braille traces + `█` fill area, wave drift |
+| `SkeletonTable` | `columns`, `rows`, `cell_widths`, `zebra` | Column separators, ragged per-cell fill, zebra |
+| `SkeletonList` | `items`, `widths` | 1-row items + 1-row gaps, short widths |
+| `SkeletonText` | `line_widths` | Paragraph with varying line widths |
+| `SkeletonStreamingText` | `lines`, `duration_ms`, `repeat`, `line_widths` | Typewriter fill L→R T→B |
+| `SkeletonBarChart` | `bars`, `bar_width`, `heights` | Vertical bars from bottom |
+| `SkeletonHBarChart` | `bars`, `bar_height`, `widths` | Horizontal bars from left |
+| `SkeletonBrailleBar` | `bars`, `fills`, `peak`, `peak_color`, `empty` | Braille gauge bars (`⢾⣿⡷`), Noise replaces structural glyphs |
+| `SkeletonKvTable` | `pairs`, `key_width`, `value_widths` | Fixed key + `│` + variable value |
+| `SkeletonLineChart` | `lines`, `filled` | Braille traces + fill area, wave drift |
 
-`render_skeleton_cells()` in `block.rs` is the shared engine (pub(crate)). Takes a `visible(row, col, width) -> bool` predicate. Used by Block, List, Text, StreamingText.
+`render_skeleton_cells()` in `block.rs` is the shared engine (pub(crate)). Takes `visible(row, col, width) -> bool` predicate. Used by Block, List, Text, StreamingText.
 
 ### Re-exports
 
-`Color`, `Constraint`, `Block` are re-exported so consumers don't need direct ratatui-core/ratatui-widgets dependencies.
+`Color`, `Constraint`, `Block` re-exported so consumers avoid direct ratatui-core/ratatui-widgets deps.
 
 ## Pantry Integration
 
-`pantry` feature gates `tui-pantry` 0.3.0 + `ratatui` as optional deps. Ingredient modules are `#[cfg(feature = "pantry")]` submodules of each widget file via `#[path = "*.ingredient.rs"]`.
-
-Widget modules are `pub` (required for pantry macro access). Internal functions remain `pub(crate)`.
+`pantry` feature gates `tui-pantry` 0.3.0 + `ratatui` as optional deps. Ingredient modules: `#[cfg(feature = "pantry")]` submodules via `#[path = "*.ingredient.rs"]`.
 
 ### Ingredient Structure
 
-All ingredient files use a single parameterized struct with `mode` + `variant` fields, registered via a `VARIANTS` const. Each has 3 mode variants (Breathe/Sweep/Plasma) with `PropInfo`. Block additionally has a Compare variant.
+All ingredient files use `VARIANTS: &[(AnimationMode, bool, &str)]` — 7 entries. Each widget variant struct has `epoch`, `mode`, `braille`, `variant` fields. Block has a Compare variant showing all 7 stacked.
+
+Chart/table ingredients render composite widgets with known chrome (headers, labels) always visible — skeleton fills only the data region.
 
 ### Panes (Use Cases)
 
-4 pane ingredients × 3 mode variants = 12 entries under the "Panes" tab. Each cycles skeleton↔content on a 10s loop (5s per phase). Content is constrained to match skeleton dimensions.
+5 pane types × 7 mode variants = 35 entries under the "Panes" tab. Each cycles skeleton↔content on a 10s loop (5s per phase). Known chrome (headers, labels, keys) always visible during skeleton phase.
 
-| Pane | Skeleton widget | Loaded content |
+| Pane | Known chrome | Skeleton data |
 |---|---|---|
-| Data Table | `SkeletonTable` 5×4 | Node status table with header |
-| Article | `SkeletonText` 5 lines, 52 col cap | Lorem ipsum paragraph |
-| Sidebar | `SkeletonList` 5 items | Navigation menu |
-| Dashboard | `SkeletonBarChart` + `SkeletonKvTable` + `SkeletonTable` | Bars + KV pairs + table |
+| Data Table | Header row (Node, Region, CPU, Status) | Row data |
+| Article | Title line | Body text |
+| Sidebar | Section header (Navigation) | Menu items |
+| Dashboard | Bar labels, KV keys, table header | Bars, values, rows |
+| Gauges | Metric labels (CPU, Memory, Disk, Network) | Braille bar per gauge |
 
-Run: `cargo run --example widget_preview --features pantry`.
+Run: `cargo run --example widget_preview --features pantry`
+
+### Demo
+
+Interactive grid of all 10 widgets. `[m]` cycles modes (Breathe/Sweep/Plasma/Noise), `[b]` toggles braille fill, `[q]` quits.
+
+Run: `cargo run --example demo`
+
+## Current Focus
+
+New widget variants landed: `SkeletonBrailleBar` (gauge shape) and `AnimationMode::Noise` (random braille per frame). Fill axis (`braille(bool)`) added to all widgets. `SkeletonTable` gained `cell_widths` for ragged per-cell fill. All pane ingredients render known chrome (headers/labels) outside the skeleton.
+
+Not yet verified: tui-pantry standalone sync (`push`), Nix build after dependency additions, visual parity via `cargo pantry dump`.

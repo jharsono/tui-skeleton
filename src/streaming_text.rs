@@ -26,6 +26,7 @@ const DEFAULT_DURATION_MS: u64 = 3000;
 pub struct SkeletonStreamingText<'a> {
     elapsed_ms: u64,
     mode: AnimationMode,
+    braille: bool,
     base: Color,
     highlight: Color,
     lines: u16,
@@ -40,6 +41,7 @@ impl<'a> SkeletonStreamingText<'a> {
         Self {
             elapsed_ms,
             mode: AnimationMode::default(),
+            braille: false,
             base: defaults::BASE,
             highlight: defaults::HIGHLIGHT,
             lines: 5,
@@ -52,6 +54,11 @@ impl<'a> SkeletonStreamingText<'a> {
 
     pub fn mode(mut self, mode: AnimationMode) -> Self {
         self.mode = mode;
+        self
+    }
+
+    pub fn braille(mut self, braille: bool) -> Self {
+        self.braille = braille;
         self
     }
 
@@ -152,6 +159,7 @@ impl Widget for SkeletonStreamingText<'_> {
             Rect::new(inner.x, inner.y, inner.width, render_lines),
             buf,
             self.mode,
+            self.braille,
             self.elapsed_ms,
             self.base,
             self.highlight,

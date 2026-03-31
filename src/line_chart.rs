@@ -5,7 +5,7 @@ use ratatui_core::{
     widgets::Widget,
 };
 
-use crate::animation::{cell_intensity, interpolate_color, AnimationMode};
+use crate::animation::{AnimationMode, cell_intensity, interpolate_color, is_uniform};
 use crate::defaults;
 
 /// Braille dot offsets within a 2×4 cell.
@@ -44,7 +44,9 @@ const DRIFT_PERIOD_MS: f32 = 20_000.0;
 #[derive(Debug, Clone)]
 pub struct SkeletonLineChart<'a> {
     elapsed_ms: u64,
+    drift_ms: Option<u64>,
     mode: AnimationMode,
+    braille: bool,
     base: Color,
     highlight: Color,
     lines: u16,
@@ -56,7 +58,9 @@ impl<'a> SkeletonLineChart<'a> {
     pub fn new(elapsed_ms: u64) -> Self {
         Self {
             elapsed_ms,
+            drift_ms: None,
             mode: AnimationMode::default(),
+            braille: false,
             base: defaults::BASE,
             highlight: defaults::HIGHLIGHT,
             lines: 2,
@@ -65,8 +69,23 @@ impl<'a> SkeletonLineChart<'a> {
         }
     }
 
+    /// Override the timestamp used for wave drift.
+    ///
+    /// When set, the wave shape is computed from this fixed value
+    /// while color animation still uses `elapsed_ms`. Pass `0` to
+    /// freeze the wave in place.
+    pub fn drift_ms(mut self, drift_ms: u64) -> Self {
+        self.drift_ms = Some(drift_ms);
+        self
+    }
+
     pub fn mode(mut self, mode: AnimationMode) -> Self {
         self.mode = mode;
+        self
+    }
+
+    pub fn braille(mut self, braille: bool) -> Self {
+        self.braille = braille;
         self
     }
 
@@ -105,6 +124,7 @@ impl<'a> SkeletonLineChart<'a> {
 /// Bundles animation parameters shared across rendering passes.
 struct Coloring {
     mode: AnimationMode,
+    braille: bool,
     elapsed_ms: u64,
     base: Color,
     highlight: Color,
@@ -138,8 +158,8 @@ impl Widget for SkeletonLineChart<'_> {
         let pixel_h = inner.height as usize * 4;
         let line_count = self.lines.min(DEFAULT_AMPLITUDES.len() as u16) as usize;
 
-        // Time-based phase drift so lines undulate.
-        let drift = self.elapsed_ms as f32 / DRIFT_PERIOD_MS * std::f32::consts::TAU;
+        let drift_time = self.drift_ms.unwrap_or(self.elapsed_ms);
+        let drift = drift_time as f32 / DRIFT_PERIOD_MS * std::f32::consts::TAU;
 
         // Track the highest wave (lowest y-pixel) at each column for fill.
         let mut fill_top = vec![pixel_h; pixel_w];
@@ -167,10 +187,11 @@ impl Widget for SkeletonLineChart<'_> {
 
         let coloring = Coloring {
             mode: self.mode,
+            braille: self.braille,
             elapsed_ms: self.elapsed_ms,
             base: self.base,
             highlight: self.highlight,
-            breathe_t: matches!(self.mode, AnimationMode::Breathe)
+            breathe_t: is_uniform(self.mode)
                 .then(|| cell_intensity(self.mode, self.elapsed_ms, 0, inner.width)),
         };
 
@@ -204,8 +225,17 @@ fn render_fill(
         for cy in fill_start..inner.height as usize {
             let x = inner.x + col;
             let y = inner.y + cy as u16;
+            let glyph = crate::animation::cell_glyph(
+                color.braille,
+                color.mode,
+                color.elapsed_ms,
+                cy as u16,
+                col,
+            );
 
-            buf[(x, y)].set_char('█').set_style(Style::default().fg(fg));
+            buf[(x, y)]
+                .set_char(glyph)
+                .set_style(Style::default().fg(fg));
         }
     }
 }

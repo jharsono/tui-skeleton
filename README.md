@@ -4,16 +4,19 @@ Animated skeleton loading widgets for [Ratatui](https://ratatui.rs).
 
 Placeholder widgets that pulse, sweep, or shimmer while data loads. All widgets are stateless — pass `elapsed_ms` from your event loop and the animation state is computed purely from the timestamp.
 
+![tui-skeleton demo — Breathe mode](https://raw.githubusercontent.com/jharsono/tui-skeleton/main/screenshots/breathe.gif)
+
 ## Widgets
 
 | Widget | Description |
 |--------|-------------|
-| `SkeletonBlock` | Solid filled rectangle — the atomic unit |
-| `SkeletonTable` | Rows with column separators and zebra striping |
+| `SkeletonBlock` | Filled rectangle — the atomic unit |
+| `SkeletonTable` | Rows with column separators, ragged cell widths, and zebra striping |
 | `SkeletonList` | Short spaced items with ragged edges (menu/sidebar) |
 | `SkeletonText` | Paragraph simulation with varying line widths |
 | `SkeletonBarChart` | Vertical bars of varying height |
 | `SkeletonHBarChart` | Horizontal bars of varying length |
+| `SkeletonBrailleBar` | Braille progress bars with rounded caps and peak marker |
 | `SkeletonKvTable` | Key-value pairs (properties/detail panel) |
 | `SkeletonStreamingText` | Typewriter-style chat text filling over time |
 | `SkeletonLineChart` | Braille line chart with overlapping wave traces |
@@ -30,10 +33,21 @@ cargo add tui-skeleton
 use ratatui_core::style::Color;
 use tui_skeleton::{SkeletonBlock, AnimationMode};
 
-let widget = SkeletonBlock::new(elapsed_ms)
-    .mode(AnimationMode::Breathe)
+// Solid fill with sweep animation
+let solid = SkeletonBlock::new(elapsed_ms)
+    .mode(AnimationMode::Sweep)
     .base(Color::Rgb(30, 22, 58))
     .highlight(Color::Rgb(49, 40, 78));
+
+// Braille fill (⣿) with breathe animation
+let braille = SkeletonBlock::new(elapsed_ms)
+    .braille(true)
+    .base(Color::Rgb(30, 22, 58))
+    .highlight(Color::Rgb(49, 40, 78));
+
+// TV noise — random braille glyphs changing every frame
+let noise = SkeletonBlock::new(elapsed_ms)
+    .mode(AnimationMode::Noise);
 ```
 
 All widgets share the same builder pattern:
@@ -77,6 +91,23 @@ if data.is_loading() {
 | **Breathe** (default) | 5s | Uniform pulse — subtle, passive loading indicator |
 | **Sweep** | 2.8s | Traveling highlight left-to-right with cosine falloff |
 | **Plasma** | 4s | Dual sine-wave interference for organic shifting patterns |
+| **Noise** | — | Constant color; random braille glyphs change every frame (TV noise) |
+
+### Breathe
+
+![Breathe mode — skeleton loading into populated data](https://raw.githubusercontent.com/jharsono/tui-skeleton/main/screenshots/breathe.gif)
+
+### Sweep
+
+![Sweep mode — skeleton loading into populated data](https://raw.githubusercontent.com/jharsono/tui-skeleton/main/screenshots/sweep.gif)
+
+### Plasma
+
+![Plasma mode — skeleton loading into populated data](https://raw.githubusercontent.com/jharsono/tui-skeleton/main/screenshots/plasma.gif)
+
+### Noise
+
+![Noise mode — skeleton loading into populated data](https://raw.githubusercontent.com/jharsono/tui-skeleton/main/screenshots/noise.gif)
 
 ## Colors
 
@@ -125,6 +156,7 @@ All widgets support:
 | Method | Default | Description |
 |--------|---------|-------------|
 | `mode(AnimationMode)` | `Breathe` | Animation style |
+| `braille(bool)` | `false` | Solid braille `⣿` fill instead of `█` |
 | `base(impl Into<Color>)` | `DarkGray` | Dim resting color |
 | `highlight(impl Into<Color>)` | `Gray` | Peak brightness color |
 | `block(Block)` | `None` | Optional border container |
@@ -135,6 +167,7 @@ Shape-specific:
 |--------|--------|---------|-------------|
 | `SkeletonTable` | `rows(u16)` | `5` | Number of visible rows |
 | `SkeletonTable` | `columns(&[Constraint])` | `[]` | Column width constraints |
+| `SkeletonTable` | `cell_widths(&[f32])` | built-in pattern | Per-cell fill fractions, cycling across (row, col) |
 | `SkeletonTable` | `zebra(bool)` | `true` | Alternating row brightness |
 | `SkeletonList` | `items(u16)` | `5` | Number of list items |
 | `SkeletonList` | `widths(&[f32])` | built-in pattern | Per-item width fractions (cycles) |
@@ -145,6 +178,11 @@ Shape-specific:
 | `SkeletonHBarChart` | `bars(u16)` | `5` | Number of horizontal bars |
 | `SkeletonHBarChart` | `bar_height(u16)` | `1` | Height of each bar in rows |
 | `SkeletonHBarChart` | `widths(&[f32])` | built-in pattern | Per-bar width fractions (cycles) |
+| `SkeletonBrailleBar` | `bars(u16)` | `3` | Number of stacked braille bars |
+| `SkeletonBrailleBar` | `fills(&[f32])` | built-in pattern | Per-bar fill fractions (cycles) |
+| `SkeletonBrailleBar` | `peak(f32)` | `None` | Peak marker position (0.0..=1.0) |
+| `SkeletonBrailleBar` | `peak_color(Color)` | highlight | Color for the peak marker cell |
+| `SkeletonBrailleBar` | `empty(Color)` | `Rgb(60,60,60)` | Color for unfilled cells |
 | `SkeletonKvTable` | `pairs(u16)` | `5` | Number of key-value pairs |
 | `SkeletonKvTable` | `key_width(u16)` | `12` | Fixed width of the key column |
 | `SkeletonKvTable` | `value_widths(&[f32])` | built-in pattern | Per-pair value width fractions (cycles) |
@@ -153,6 +191,8 @@ Shape-specific:
 | `SkeletonStreamingText` | `repeat(bool)` | `false` | Loop the fill cycle |
 | `SkeletonStreamingText` | `line_widths(&[f32])` | built-in pattern | Per-line width fractions (cycles, capped at 95%) |
 | `SkeletonLineChart` | `lines(u16)` | `2` | Number of overlapping wave traces |
+| `SkeletonLineChart` | `filled(bool)` | `true` | Fill area below each wave |
+| `SkeletonLineChart` | `drift_ms(u64)` | `None` | Override wave drift timestamp (freeze shape with `0`) |
 
 ## Examples
 
@@ -162,15 +202,23 @@ Shape-specific:
 cargo run --example demo
 ```
 
-All widget types in a 4×2 grid. Press `m` to cycle animation modes, `q` to quit.
+All widget types in a 3×3 grid. `[m]` cycle animation modes, `[b]` toggle braille fill, `[l]` toggle skeleton↔data loop, `[q]` quit.
 
 ### Widget pantry
 
-Browse every widget, animation mode, and realistic use-case pane with [tui-pantry](https://crates.io/crates/tui-pantry):
+This repo ships with [tui-pantry](https://crates.io/crates/tui-pantry) integration — a widget isolation tool for ratatui. Browse every skeleton widget, all animation modes and fill variants, realistic use-case panes, and their props in an interactive viewer:
+
+```sh
+cargo pantry
+```
+
+Or without `cargo-pantry` installed:
 
 ```sh
 cargo run --example widget_preview --features pantry
 ```
+
+![tui-pantry widget browser](https://raw.githubusercontent.com/jharsono/tui-skeleton/main/screenshots/pantry.gif)
 
 ## License
 

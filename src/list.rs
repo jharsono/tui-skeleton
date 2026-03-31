@@ -16,6 +16,7 @@ const DEFAULT_WIDTHS: [f32; 5] = [0.45, 0.30, 0.55, 0.35, 0.50];
 pub struct SkeletonList<'a> {
     elapsed_ms: u64,
     mode: AnimationMode,
+    braille: bool,
     base: Color,
     highlight: Color,
     items: u16,
@@ -28,6 +29,7 @@ impl<'a> SkeletonList<'a> {
         Self {
             elapsed_ms,
             mode: AnimationMode::default(),
+            braille: false,
             base: defaults::BASE,
             highlight: defaults::HIGHLIGHT,
             items: 5,
@@ -38,6 +40,11 @@ impl<'a> SkeletonList<'a> {
 
     pub fn mode(mut self, mode: AnimationMode) -> Self {
         self.mode = mode;
+        self
+    }
+
+    pub fn braille(mut self, braille: bool) -> Self {
+        self.braille = braille;
         self
     }
 
@@ -95,6 +102,7 @@ impl Widget for SkeletonList<'_> {
             Rect::new(inner.x, inner.y, inner.width, render_height),
             buf,
             self.mode,
+            self.braille,
             self.elapsed_ms,
             self.base,
             self.highlight,
